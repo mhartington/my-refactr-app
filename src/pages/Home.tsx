@@ -13,34 +13,102 @@ import {
   IonItemSliding, IonItemOption, IonItemOptions
 } from '@ionic/react';
 import { add } from 'ionicons/icons'
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './Home.css';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 
 const Home: React.FC = () => {
-  const [state, setState] = useState([{ name: 'item', id: 0 }]);
+  const [state, setState] = useState<string[]>([]);
   const [presentAlert] = useIonAlert();
   const itemSliding = useRef<HTMLIonListElement | null>(null);
+
+  useEffect(() => {
+    console.log('in useEffect')
+    checkPermission()
+    .then(mkDir)
+    .then(readDir);
+  }, [])
+
+
+  const checkPermission = async() => {
+    await Filesystem.requestPermissions();
+  }
+  const mkDir = async() => {
+    try  {
+      await Filesystem.mkdir({
+        directory: Directory.Documents,
+        path: 'new-notes'
+      })
+    }
+    catch(e){}
+  }
+  const readDir = async() => {
+    const items = await Filesystem.readdir({
+      directory: Directory.Documents,
+      path: 'new-notes'
+    });
+    setState(items.files)
+  }
+
   const addNewItem = () => {
     presentAlert({
-      header: "Add New Item",
-      message: 'Create a new item for your list',
-      inputs: [{ type: 'text', name: 'newItem', label: 'new item'}],
+      header: "Add New file",
+      message: 'Create a new Text File',
+      inputs: [
+        { type: 'text', name: 'fileName', label: 'Name'},
+        { type: 'textarea', name: 'fileContent', label: 'Content'}
+
+      ],
       buttons: ['Save'],
-      onDidDismiss: (ev)=> {
-        const newItem = ev.detail.data.values.newItem;
-        setState([...state, {name: newItem, id: ++state.length - 1}])
+      onDidDismiss: async (ev)=> {
+        const {fileName, fileContent} = ev.detail.data.values;
+        await Filesystem.writeFile({
+          directory: Directory.Documents,
+          path: `new-notes/${fileName}.txt`,
+          encoding: Encoding.UTF8,
+          data: fileContent ?? ''
+        });
+        await readDir();
+        // setState([...state, {name: newItem, id: ++state.length - 1}])
       },
     })
   }
+  const edit = async(fileName: string) => {
+    const { data } = await Filesystem.readFile({
+      directory: Directory.Documents,
+      path: `new-notes/${fileName}`
+    })
 
-  const deleteItem = (item: {name: string, id: number}) => {
-      const newState = state.filter(entry => {
-        if(entry.id === item.id){}
-        else {return entry}
-      })
-      return itemSliding.current?.closeSlidingItems().then(() => {
-        setState(newState)
-      })
+    presentAlert({
+      header: "Add New file",
+      message: 'Create a new Text File',
+      inputs: [
+        { type: 'text', name: 'fileName', label: 'Name', value: fileName},
+        { type: 'textarea', name: 'fileContent', label: 'Content', value: data}
+
+      ],
+      buttons: ['Save'],
+      onDidDismiss: async (ev)=> {
+        const {fileName, fileContent} = ev.detail.data.values;
+        await Filesystem.writeFile({
+          directory: Directory.Documents,
+          path: `new-notes/${fileName}`,
+          encoding: Encoding.UTF8,
+          data: fileContent ?? ''
+        });
+        await readDir();
+        await itemSliding.current?.closeSlidingItems()
+      },
+    })
+
+  }
+  const deleteItem = async (fileName: string) => {
+    await itemSliding.current?.closeSlidingItems()
+    await Filesystem.deleteFile({
+      directory: Directory.Documents,
+      path: `new-notes/${fileName}`
+    })
+    await readDir();
   }
   return (
     <IonPage>
@@ -61,15 +129,16 @@ const Home: React.FC = () => {
           </IonToolbar>
         </IonHeader>
         <IonList ref={itemSliding}>
-          {state.map((entry) => {
+          {state.map((entry, idx) => {
             return (
-              <IonItemSliding>
+              <IonItemSliding key={idx}>
                 <IonItem>
-                  <p slot="start">{entry.id}</p>
-                  {entry.name}
+                  <p slot="start">{idx}</p>
+                  {entry}
                   </IonItem>
                   <IonItemOptions side="end">
                   <IonItemOption onClick={() => deleteItem(entry)}>Delete</IonItemOption>
+                  <IonItemOption onClick={() => edit(entry)}>Edit</IonItemOption>
                   </IonItemOptions>
               </IonItemSliding>
             );
