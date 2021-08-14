@@ -9,20 +9,46 @@ import {
   IonButton,
   IonButtons,
   IonIcon,
+  useIonAlert,
+  IonItemSliding, IonItemOption, IonItemOptions
 } from '@ionic/react';
 import { add } from 'ionicons/icons'
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import './Home.css';
 
 const Home: React.FC = () => {
   const [state, setState] = useState([{ name: 'item', id: 0 }]);
+  const [presentAlert] = useIonAlert();
+  const itemSliding = useRef<HTMLIonListElement | null>(null);
+  const addNewItem = () => {
+    presentAlert({
+      header: "Add New Item",
+      message: 'Create a new item for your list',
+      inputs: [{ type: 'text', name: 'newItem', label: 'new item'}],
+      buttons: ['Save'],
+      onDidDismiss: (ev)=> {
+        const newItem = ev.detail.data.values.newItem;
+        setState([...state, {name: newItem, id: ++state.length - 1}])
+      },
+    })
+  }
+
+  const deleteItem = (item: {name: string, id: number}) => {
+      const newState = state.filter(entry => {
+        if(entry.id === item.id){}
+        else {return entry}
+      })
+      return itemSliding.current?.closeSlidingItems().then(() => {
+        setState(newState)
+      })
+  }
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar>
         <IonTitle>Blank</IonTitle>
         <IonButtons slot="end">
-        <IonButton onClick={() => setState([...state, {name: 'item', id: ++state.length}])}>
+        <IonButton onClick={() => addNewItem()}>
             <IonIcon icon={add} slot="icon-only"></IonIcon>
           </IonButton>
         </IonButtons>
@@ -34,13 +60,18 @@ const Home: React.FC = () => {
             <IonTitle size="large">Blank</IonTitle>
           </IonToolbar>
         </IonHeader>
-        <IonList>
+        <IonList ref={itemSliding}>
           {state.map((entry) => {
             return (
-              <IonItem>
-                <p slot="start">{entry.id}</p>
-                {entry.name}
-              </IonItem>
+              <IonItemSliding>
+                <IonItem>
+                  <p slot="start">{entry.id}</p>
+                  {entry.name}
+                  </IonItem>
+                  <IonItemOptions side="end">
+                  <IonItemOption onClick={() => deleteItem(entry)}>Delete</IonItemOption>
+                  </IonItemOptions>
+              </IonItemSliding>
             );
           })}
         </IonList>
