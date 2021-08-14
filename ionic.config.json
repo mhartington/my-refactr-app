@@ -1,0 +1,7 @@
+{
+  "name": "my-refactr-app",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react"
+}
