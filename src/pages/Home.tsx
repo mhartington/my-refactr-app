@@ -10,9 +10,11 @@ import {
   IonButtons,
   IonIcon,
   useIonAlert,
-  IonItemSliding, IonItemOption, IonItemOptions
+  IonItemSliding,
+  IonItemOption,
+  IonItemOptions,
 } from '@ionic/react';
-import { add } from 'ionicons/icons'
+import { add } from 'ionicons/icons';
 import { useState, useRef, useEffect } from 'react';
 import './Home.css';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
@@ -23,109 +25,108 @@ const Home: React.FC = () => {
   const itemSliding = useRef<HTMLIonListElement | null>(null);
 
   useEffect(() => {
-    console.log('in useEffect')
-    checkPermission()
-    .then(mkDir)
-    .then(readDir);
-  }, [])
+    console.log('in useEffect');
+    checkPermission().then(mkDir).then(readDir);
+  }, []);
 
-
-  const checkPermission = async() => {
+  const checkPermission = async () => {
     await Filesystem.requestPermissions();
-  }
-  const mkDir = async() => {
-    try  {
+  };
+  const mkDir = async () => {
+    try {
       await Filesystem.mkdir({
         directory: Directory.Documents,
-        path: 'new-notes'
-      })
-    }
-    catch(e){}
-  }
-  const readDir = async() => {
+        path: 'new-notes',
+      });
+    } catch (e) {}
+  };
+  const readDir = async () => {
     const items = await Filesystem.readdir({
       directory: Directory.Documents,
-      path: 'new-notes'
+      path: 'new-notes',
     });
-    setState(items.files)
-  }
+    setState(items.files.reverse());
+  };
 
   const addNewItem = () => {
     presentAlert({
-      header: "Add New file",
+      header: 'Add New file',
       message: 'Create a new Text File',
       inputs: [
-        { type: 'text', name: 'fileName', label: 'Name'},
-        { type: 'textarea', name: 'fileContent', label: 'Content'}
-
+        { type: 'text', name: 'fileName', label: 'Name' },
+        { type: 'textarea', name: 'fileContent', label: 'Content' },
       ],
       buttons: ['Save'],
-      onDidDismiss: async (ev)=> {
-        const {fileName, fileContent} = ev.detail.data.values;
+      onDidDismiss: async (ev) => {
+        const { fileName, fileContent } = ev.detail.data.values;
         await Filesystem.writeFile({
           directory: Directory.Documents,
           path: `new-notes/${fileName}.txt`,
           encoding: Encoding.UTF8,
-          data: fileContent ?? ''
+          data: fileContent ?? '',
         });
         await readDir();
         // setState([...state, {name: newItem, id: ++state.length - 1}])
       },
-    })
-  }
-  const edit = async(fileName: string) => {
+    });
+  };
+  const edit = async (fileName: string) => {
     const { data } = await Filesystem.readFile({
       directory: Directory.Documents,
-      path: `new-notes/${fileName}`
-    })
+      path: `new-notes/${fileName}`,
+      encoding: Encoding.UTF8
+    });
 
     presentAlert({
-      header: "Add New file",
+      header: 'Add New file',
       message: 'Create a new Text File',
       inputs: [
-        { type: 'text', name: 'fileName', label: 'Name', value: fileName},
-        { type: 'textarea', name: 'fileContent', label: 'Content', value: data}
-
+        { type: 'text', name: 'fileName', label: 'Name', value: fileName },
+        {
+          type: 'textarea',
+          name: 'fileContent',
+          label: 'Content',
+          value: data,
+        },
       ],
       buttons: ['Save'],
-      onDidDismiss: async (ev)=> {
-        const {fileName, fileContent} = ev.detail.data.values;
+      onDidDismiss: async (ev) => {
+        const { fileName, fileContent } = ev.detail.data.values;
         await Filesystem.writeFile({
           directory: Directory.Documents,
           path: `new-notes/${fileName}`,
           encoding: Encoding.UTF8,
-          data: fileContent ?? ''
+          data: fileContent ?? '',
         });
         await readDir();
-        await itemSliding.current?.closeSlidingItems()
+        await itemSliding.current?.closeSlidingItems();
       },
-    })
-
-  }
+    });
+  };
   const deleteItem = async (fileName: string) => {
-    await itemSliding.current?.closeSlidingItems()
+    await itemSliding.current?.closeSlidingItems();
     await Filesystem.deleteFile({
       directory: Directory.Documents,
-      path: `new-notes/${fileName}`
-    })
+      path: `new-notes/${fileName}`,
+    });
     await readDir();
-  }
+  };
   return (
     <IonPage>
       <IonHeader>
         <IonToolbar>
-        <IonTitle>Blank</IonTitle>
-        <IonButtons slot="end">
-        <IonButton onClick={() => addNewItem()}>
-            <IonIcon icon={add} slot="icon-only"></IonIcon>
-          </IonButton>
-        </IonButtons>
+          <IonTitle>File Explorer</IonTitle>
+          <IonButtons slot="end">
+            <IonButton onClick={() => addNewItem()}>
+              <IonIcon icon={add} slot="icon-only"></IonIcon>
+            </IonButton>
+          </IonButtons>
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
         <IonHeader collapse="condense">
           <IonToolbar>
-            <IonTitle size="large">Blank</IonTitle>
+            <IonTitle size="large">File Explorer</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonList ref={itemSliding}>
@@ -135,11 +136,18 @@ const Home: React.FC = () => {
                 <IonItem>
                   <p slot="start">{idx}</p>
                   {entry}
-                  </IonItem>
-                  <IonItemOptions side="end">
-                  <IonItemOption onClick={() => deleteItem(entry)}>Delete</IonItemOption>
-                  <IonItemOption onClick={() => edit(entry)}>Edit</IonItemOption>
-                  </IonItemOptions>
+                </IonItem>
+                <IonItemOptions side="end">
+                  <IonItemOption color="success" onClick={() => edit(entry)}>
+                    Edit
+                  </IonItemOption>
+                  <IonItemOption
+                    color="danger"
+                    onClick={() => deleteItem(entry)}
+                  >
+                    Delete
+                  </IonItemOption>
+                </IonItemOptions>
               </IonItemSliding>
             );
           })}
