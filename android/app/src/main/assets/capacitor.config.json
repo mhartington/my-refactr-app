@@ -1,0 +1,6 @@
+{
+	"appId": "io.ionic.starter",
+	"appName": "my-refactr-app",
+	"webDir": "build",
+	"bundledWebRuntime": false
+}
